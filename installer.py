@@ -3,30 +3,31 @@ from textual.screen import Screen
 from textual.containers import Horizontal, Vertical
 from textual.widgets import Footer, Header, SelectionList, Label, Button, Markdown, Select, Static, Switch
 
-### JSON Exporter ###
+import json
 
-def savejson(json):
+### JSON Exporter ###
+def savejson(data):
     with open('options.json', 'w') as f:
-        f.write(str(json).replace("'", '"').replace("True", "true").replace("False", "false"))
+        json.dump(data, f, indent=4)
 
 #####################
 
-Head="""
+Head = """
 # DesktopOnCodespaces Installer
 
-> DesktopOnCodespaces Allow you to run grapical linux and windows apps in your codespace for free.
+> DesktopOnCodespaces allows you to run graphical Linux and Windows apps in your codespace for free.
 
-It Actually Have
-* Windows App Support (using wine)
+It includes:
+* Windows App Support (using Wine)
 * Audio Support
 * Root Access
-* Support File Persistance
-* Entierly in web browser
+* Support File Persistence
+* Entirely in web browser
 * Bypass School Network
 * Fast VMs Using KVM (Windows and Linux)
-
 """
-InstallHead="""
+
+InstallHead = """
 # DesktopOnCodespaces Installer
 """     
 
@@ -38,51 +39,68 @@ class InstallScreen(Screen):
     def compose(self) -> ComposeResult:
         yield Header()
         yield Markdown(InstallHead)
-        yield Horizontal (
-        Vertical (
-         Label("Default Apps (you should keep them)"),
-         SelectionList[int]( 
-            ("Wine", 0, True),
-            ("Brave", 1, True),
-            ("Xarchiver", 2, True),
-            id="defaultapps"
-        ),),
-        Vertical (
-         Label("Programming"),
-         SelectionList[int]( 
-            ("OpenJDK 8 (jre)", 0),
-            ("OpenJDK 17 (jre)", 1),
-            ("VSCodium", 2),
-            id="programming"
-        ),),
-        Vertical (
-         Label("Apps"),
-         SelectionList[int]( 
-            ("VLC", 0),
-            ("LibreOffice", 1),
-            ("Synaptic", 2),
-            ("AQemu (VMs)", 3),
-            ("Discord", 4),
-            id="apps"
-        ),),
+        
+        # App selections
+        yield Horizontal(
+            Vertical(
+                Label("Default Apps (you should keep them)"),
+                SelectionList(
+                    ("Wine", 0),
+                    ("Brave", 1),
+                    ("Xarchiver", 2),
+                    id="defaultapps"
+                ),
+            ),
+            Vertical(
+                Label("Programming"),
+                SelectionList(
+                    ("OpenJDK 8 (jre)", 0),
+                    ("OpenJDK 17 (jre)", 1),
+                    ("VSCodium", 2),
+                    id="programming"
+                ),
+            ),
+            Vertical(
+                Label("Apps"),
+                SelectionList(
+                    ("VLC", 0),
+                    ("LibreOffice", 1),
+                    ("Synaptic", 2),
+                    ("AQemu (VMs)", 3),
+                    ("Discord", 4),
+                    id="apps"
+                ),
+            ),
         )
 
-        yield Vertical (
-         Horizontal(
-            Label("\nDesktop Environement :"),
-            Select(id="de", value="KDE Plasma (Heavy)", options=((line, line) for line in LINES)),
-        ),)
-        yield Horizontal (
-            Button.error("Back", id="back"),
-            Button.warning("Install NOW", id="in"),
+        # Desktop Environment selection
+        yield Vertical(
+            Horizontal(
+                Label("\nDesktop Environment: "),
+                Select(id="de", value="KDE Plasma (Heavy)", options=[(line, line) for line in LINES]),
+            ),
         )
+
+        # Navigation buttons
+        yield Horizontal(
+            Button("Back", id="back"),
+            Button("Install NOW", id="install"),
+        )
+
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if event.button.id == "back":
-            app.pop_screen()
-        if event.button.id == "in":
-            data = {"defaultapps": self.query_one("#defaultapps").selected, "programming": self.query_one("#programming").selected, "apps": self.query_one("#apps").selected, "enablekvm": True, "DE": self.query_one("#de").value}
+            self.app.pop_screen()
+        elif event.button.id == "install":
+            # Save configuration
+            data = {
+                "defaultapps": [item[0] for item in self.query_one("#defaultapps").selected],
+                "programming": [item[0] for item in self.query_one("#programming").selected],
+                "apps": [item[0] for item in self.query_one("#apps").selected],
+                "enablekvm": True,
+                "DE": self.query_one("#de").value
+            }
             savejson(data)
-            app.exit()
+            self.app.exit("Installation data saved!")
 
 class InstallApp(App):
     CSS_PATH = "installer.tcss"
@@ -91,16 +109,14 @@ class InstallApp(App):
         yield Header()
         yield Markdown(Head)
         
-        yield Vertical (
-            Button.success("Install", id="install"),
+        yield Vertical(
+            Button("Install", id="install"),
         )
+
     def on_button_pressed(self, event: Button.Pressed) -> None:
-        if event.button.id == "cancel":
-            print("")
         if event.button.id == "install":
             self.push_screen(InstallScreen())
-            
+
 if __name__ == "__main__":
     app = InstallApp()
     app.run()
-
